@@ -26,6 +26,7 @@ export interface YtVideoWidgetProps {
 export interface YtVideoWidgetRef {
   pauseVideo: () => void;
   playVideo: () => void;
+  scrollIntoView: () => void;
 }
 
 const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
@@ -34,9 +35,9 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
     forwaredVideoRef: React.ForwardedRef<YtVideoWidgetRef>
   ) {
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
-    const [isMuted, setisMuted] = useState<boolean>(false);
+    const [isMuted, setIsMuted] = useState<boolean>(false);
     const videoRef = useRef<HTMLVideoElement>(null);
-    const playPauseRef = useRef<HTMLButtonElement>(null);
+    const playPauseBtnRef = useRef<HTMLButtonElement>(null);
 
     const toggleMuted = useCallback(() => {
       if (videoRef.current) {
@@ -46,13 +47,23 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
           videoRef.current.muted = true;
         }
       }
-      setisMuted((muted) => !muted);
-    }, [setisMuted, videoRef, isMuted]);
+      setIsMuted((muted) => !muted);
+    }, [setIsMuted, videoRef, isMuted]);
 
     const handleVideoEnd = useCallback(() => {
       setIsPlaying(false);
       onVideoEnd();
     }, [setIsPlaying, onVideoEnd]);
+
+    const scrollIntoView = useCallback(() => {
+      if (videoRef.current) {
+        videoRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "center",
+        });
+      }
+    }, [videoRef]);
 
     const pauseVideo = useCallback(() => {
       if (isPlaying) {
@@ -63,7 +74,19 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
 
     const playVideo = useCallback(() => {
       if (!isPlaying) {
-        videoRef?.current?.play();
+        videoRef?.current?.play().catch((e) => {
+          console.log({
+            playError: e,
+          });
+
+          // The timeout help to avoid blocking the eventual transition of the slider.
+          const id = setTimeout(() => {
+            alert(
+              "Unable to play the video, please check if videos are allowed to play on this site."
+            );
+            clearTimeout(id);
+          }, 1000);
+        });
         setIsPlaying(true);
       }
     }, [isPlaying]);
@@ -71,26 +94,24 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
     const togglePlay = useCallback(
       (animatePlayPauseBtn: boolean = false) => {
         if (animatePlayPauseBtn) {
-          if (playPauseRef.current?.classList.contains("grow-fade-in")) {
-            playPauseRef.current?.classList.remove("grow-fade-in");
+          if (playPauseBtnRef.current?.classList.contains("grow-fade-in")) {
+            playPauseBtnRef.current?.classList.remove("grow-fade-in");
           }
 
-          playPauseRef.current?.classList.add("grow-fade-in");
+          playPauseBtnRef.current?.classList.add("grow-fade-in");
           const id = setTimeout(() => {
-            playPauseRef.current?.classList.remove("grow-fade-in");
+            playPauseBtnRef.current?.classList.remove("grow-fade-in");
             clearTimeout(id);
           }, 1200);
         }
 
-        if (videoRef.current) {
-          if (isPlaying) {
-            pauseVideo();
-          } else {
-            playVideo();
-          }
+        if (isPlaying) {
+          pauseVideo();
+        } else {
+          playVideo();
         }
       },
-      [pauseVideo, playVideo, videoRef, isPlaying, playPauseRef]
+      [pauseVideo, playVideo, isPlaying, playPauseBtnRef]
     );
 
     useEffect(() => {
@@ -107,12 +128,13 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
       () => ({
         pauseVideo,
         playVideo,
+        scrollIntoView,
       }),
-      [pauseVideo, playVideo]
+      [pauseVideo, playVideo, scrollIntoView]
     );
 
     return (
-      <div className="flex justify-between items-stretch h-[765px]  w-[500px] max-w-[860px]  text-white">
+      <div className="box-border flex justify-between items-stretch h-[765px]  w-[500px] max-w-[860px]  text-white">
         <div className="relative">
           <video
             className="rounded-2xl shadow-sm shadow-white/10 border border-white/10"
@@ -176,8 +198,9 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
             </div>
 
             <button
-              ref={playPauseRef}
+              ref={playPauseBtnRef}
               className="play-pause-container absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl bg-black/50 w-14 h-14 justify-center items-center rounded-full"
+              disabled
             >
               {isPlaying ? <MdPlayArrow /> : <MdPause />}
             </button>
