@@ -3,12 +3,14 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { MdPause, MdPlayArrow, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 import TimeProgress from "./TimeProgress";
 import YtActions from "./YtActions";
+import YtVideoCommentSection from "./YtVideoCommentSection";
 
 export type Video = {
   avatar: string;
@@ -27,6 +29,7 @@ export interface YtVideoWidgetRef {
   pauseVideo: () => void;
   playVideo: () => void;
   scrollIntoView: () => void;
+  closeCommentSection: () => void;
 }
 
 const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
@@ -34,11 +37,10 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
     { video, onVideoEnd }: YtVideoWidgetProps,
     forwaredVideoRef: React.ForwardedRef<YtVideoWidgetRef>
   ) {
-    const [isPlaying, setIsPlaying] = useState<boolean>(false);
-    const [isMuted, setIsMuted] = useState<boolean>(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const playPauseBtnRef = useRef<HTMLButtonElement>(null);
 
+    const [isMuted, setIsMuted] = useState<boolean>(false);
     const toggleMuted = useCallback(() => {
       if (videoRef.current) {
         if (isMuted) {
@@ -50,20 +52,11 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
       setIsMuted((muted) => !muted);
     }, [setIsMuted, videoRef, isMuted]);
 
+    const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const handleVideoEnd = useCallback(() => {
       setIsPlaying(false);
       onVideoEnd();
     }, [setIsPlaying, onVideoEnd]);
-
-    const scrollIntoView = useCallback(() => {
-      if (videoRef.current) {
-        videoRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-          inline: "center",
-        });
-      }
-    }, [videoRef]);
 
     const pauseVideo = useCallback(() => {
       if (isPlaying) {
@@ -114,6 +107,25 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
       [pauseVideo, playVideo, isPlaying, playPauseBtnRef]
     );
 
+    const [isCommentExpanded, setIsCommentExpanded] = useState(false);
+    const toggleCommentExpanded = useCallback(() => {
+      setIsCommentExpanded((expanded) => !expanded);
+    }, [setIsCommentExpanded]);
+
+    const closeCommentSection = useCallback(() => {
+      setIsCommentExpanded(false);
+    }, [setIsCommentExpanded]);
+
+    const scrollIntoView = useCallback(() => {
+      if (videoRef.current) {
+        videoRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "center",
+        });
+      }
+    }, [videoRef]);
+
     useEffect(() => {
       const videoElt = videoRef.current;
       videoElt?.addEventListener("ended", handleVideoEnd);
@@ -129,15 +141,25 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
         pauseVideo,
         playVideo,
         scrollIntoView,
+        closeCommentSection,
       }),
-      [pauseVideo, playVideo, scrollIntoView]
+      [pauseVideo, playVideo, scrollIntoView, closeCommentSection]
     );
 
+    const actions = useMemo(
+      () => <YtActions onCommentPressed={toggleCommentExpanded} />,
+      [toggleCommentExpanded]
+    );
+
+    const videoRadius = isCommentExpanded ? "rounded-s-2xl" : "rounded-2xl";
+
     return (
-      <div className="box-border flex justify-between items-stretch h-[765px]  w-[500px] max-w-[860px]  text-white">
+      <div
+        className={`relative flex items-stretch h-[765px] min-w-[500px] max-w-[860px]  text-white`}
+      >
         <div className="relative">
           <video
-            className="rounded-2xl shadow-sm shadow-white/10 border border-white/10"
+            className={`${videoRadius} shadow-sm shadow-white/10 border border-white/10`}
             ref={videoRef}
             src={video.src}
             poster={video.poster}
@@ -149,9 +171,9 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
 
           <div
             onClick={() => togglePlay(true)}
-            className="absolute top-0 right-0 left-0 bottom-0 z-50 flex flex-col justify-between rounded-2xl overflow-hidden"
+            className={`absolute top-0 right-0 left-0 bottom-0 z-50 ${videoRadius} overflow-hidden`}
           >
-            <div className="flex justify-between items-center p-4 z-100">
+            <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4 z-100">
               <button
                 onClick={(e) => {
                   togglePlay();
@@ -174,17 +196,20 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
               </button>
             </div>
 
-            <div className="flex flex-col gap-2 p-4">
-              <h1>{video.title}</h1>
-              <div className="flex justify-between items-center">
-                <div className="flex gap-2 items-center">
-                  <img
-                    src={video.avatar}
-                    alt={video.channel}
-                    className="w-[40px] h-[40px] rounded-full drop-shadow-sm"
-                  />
-                  <h2>@{video.channel}</h2>
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col gap-2 p-4">
+              <div className="flex justify-between items-end">
+                <div>
+                  <h1>{video.title}</h1>
+                  <div className="flex gap-2 items-center">
+                    <img
+                      src={video.avatar}
+                      alt={video.channel}
+                      className="w-[40px] h-[40px] rounded-full drop-shadow-sm"
+                    />
+                    <h2>@{video.channel}</h2>
+                  </div>
                 </div>
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -194,6 +219,8 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
                 >
                   Subscribe
                 </button>
+
+                {isCommentExpanded ? actions : null}
               </div>
             </div>
 
@@ -208,9 +235,13 @@ const YtVideoWidget = forwardRef<YtVideoWidgetRef, YtVideoWidgetProps>(
             <TimeProgress videoRef={videoRef} />
           </div>
         </div>
-        <div className="flex-1 w-[70px] px-4">
-          <YtActions />
-        </div>
+
+        {isCommentExpanded ? null : actions}
+
+        <YtVideoCommentSection
+          show={isCommentExpanded}
+          onClose={closeCommentSection}
+        />
       </div>
     );
   }

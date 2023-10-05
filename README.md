@@ -2,6 +2,6 @@
 
 This is a clone of the Youtube Stories feature.
 
-# TODO
+## TODO
 
-- [ ] Comments section toggle + animation.
+- [ ] Make the layout responsive.

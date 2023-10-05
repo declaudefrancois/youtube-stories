@@ -15,8 +15,9 @@ export default function VideosSlider({ videos }: { videos: Video[] }) {
   const handleNext = useCallback(() => {
     if (currentIdx < videos.length - 1) {
       videoMapRefs.current?.get(currentIdx)?.pauseVideo();
-      videoMapRefs.current?.get(currentIdx + 1)?.playVideo();
+      videoMapRefs.current?.get(currentIdx)?.closeCommentSection();
 
+      videoMapRefs.current?.get(currentIdx + 1)?.playVideo();
       videoMapRefs.current?.get(currentIdx + 1)?.scrollIntoView();
 
       setCurrentIdx((idx) => idx + 1);
@@ -26,8 +27,9 @@ export default function VideosSlider({ videos }: { videos: Video[] }) {
   const handlePrev = useCallback(() => {
     if (currentIdx > 0) {
       videoMapRefs.current?.get(currentIdx)?.pauseVideo();
-      videoMapRefs.current?.get(currentIdx - 1)?.playVideo();
+      videoMapRefs.current?.get(currentIdx)?.closeCommentSection();
 
+      videoMapRefs.current?.get(currentIdx - 1)?.playVideo();
       videoMapRefs.current?.get(currentIdx - 1)?.scrollIntoView();
 
       setCurrentIdx((idx) => idx - 1);
@@ -74,7 +76,7 @@ export default function VideosSlider({ videos }: { videos: Video[] }) {
   return (
     <div
       ref={containerRef}
-      className="bg-black w-screen h-screen  overflow-hidden items-center flex flex-col gap-5 py-5 transition-transform duration-300 ease-in-out"
+      className="bg-black w-screen h-screen  overflow-hidden items-center flex flex-col gap-5 py-5 transition-transform duration-300 ease-in-out pb-[300px]"
     >
       {videos.map((video, index) => (
         <YtVideoWidget
